@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "buildTime": "2025-06-17T10:30:39.828Z",
+  "scripts": [
+    {
+      "name": "example-agent",
+      "file": "example-agent.js",
+      "metadata": {
+        "version": "1.0.0",
+        "description": "Example Frida agent demonstrating hooking capabilities",
+        "author": "Yongsan SexMaster Team",
+        "target": "Any process (Android/Desktop)",
+        "compiled": true,
+        "originalFile": "example-agent.ts",
+        "size": 2762
+      }
+    },
+    {
+      "name": "hello-world",
+      "file": "hello-world.js",
+      "metadata": {
+        "version": "1.0.0",
+        "description": "Simple hello world agent for testing",
+        "author": "Yongsan SexMaster Team",
+        "target": "Any process",
+        "compiled": true,
+        "originalFile": "hello-world.ts",
+        "size": 373
+      }
+    }
+  ]
+}
