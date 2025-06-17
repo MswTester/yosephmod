@@ -5,10 +5,10 @@
   "main": "dist/main/main.js",
   "scripts": {
     "start": "electron ./dist/main/main.js",
-    "dev": "concurrently \"npm run watch:main\" \"npm run watch:renderer\" \"wait-on http://localhost:3000 && electron .\"",
     "build": "npm run clean && npm run build:main && npm run build:renderer && npm run copy-files",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "esbuild src/renderer/index.tsx --outfile=dist/renderer/renderer.js --bundle --loader:.tsx=tsx --loader:.ts=ts",
+    "watch": "concurrently \"npm run watch:main\" \"npm run watch:renderer\"",
     "watch:main": "tsc -p tsconfig.main.json --watch",
     "watch:renderer": "esbuild src/renderer/index.tsx --outfile=dist/renderer/renderer.js --bundle --loader:.tsx=tsx --loader:.ts=ts --watch",
     "clean": "rimraf dist",
