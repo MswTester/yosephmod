@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const tar = require('tar');
 const os = require('os');
+const { execSync } = require('child_process');
 
 const version = '16.7.14';
 const osName = os.platform();
@@ -33,7 +34,9 @@ async function downloadAndInstall() {
 
         // Extract the tar.gz file
         console.log('Extracting archive...');
-        await tar.x({
+        osName.includes('linux') ? 
+            execSync(`tar -xvf ${downloadPath}`) : 
+            await tar.x({
             file: downloadPath,
             cwd: extractPath,
             strip: 1

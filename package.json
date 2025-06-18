@@ -1,8 +1,12 @@
 {
-  "name": "yongsan-sexmaster",
+  "name": "yasm-framework",
   "version": "1.0.0",
-  "description": "frida based",
-  "main": "dist/main/main.js",
+  "description": "YASM - Frida-based cheat framework for easy development",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "templates/*"
+  ],
   "scripts": {
     "start": "electron ./dist/main/main.js",
     "dev": "cross-env NODE_ENV=development concurrently \"npm run watch\" \"npm run watch:agents\" \"npm run start\"",
@@ -39,8 +43,8 @@
   },
   "homepage": "https://github.com/MswTester/yongsan-sexmaster#readme",
   "build": {
-    "appId": "com.mswtester.ysm",
-    "productName": "ysm",
+    "appId": "com.mswtester.yasm",
+    "productName": "yasm",
     "files": [
       "dist/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
@@ -84,7 +88,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "ysm"
+      "shortcutName": "yasm"
     },
     "publish": {
       "provider": "github",

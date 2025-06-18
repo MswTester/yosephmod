@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 import frida from 'frida';
 import { app } from 'electron';
+import EventEmitter from 'events';
 
 interface ScriptInfo {
   name: string;
@@ -26,11 +27,28 @@ export class FridaScriptManager {
   private isDev: boolean;
   private scriptsPath: string;
   private embeddedScripts = new Map<string, ScriptInfo>();
+  private eventEmiiter = new EventEmitter();
 
   constructor() {
     this.isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     this.scriptsPath = this.getScriptsPath();
     this.initializeEmbeddedScripts();
+  }
+
+  public on(scriptName: string, callback: (message: string, data?: Buffer) => void) {
+    this.eventEmiiter.on(`script-recv-${scriptName}`, (message: any, data?: Buffer) => {
+      callback(message, data);
+    });
+  }
+
+  public once(scriptName: string, callback: (message: string, data?: Buffer) => void) {
+    this.eventEmiiter.once(`script-recv-${scriptName}`, (message: any, data?: Buffer) => {
+      callback(message, data);
+    });
+  }
+
+  public off(scriptName: string, callback: (message: string, data?: Buffer) => void) {
+    this.eventEmiiter.off(`script-recv-${scriptName}`, callback);
   }
 
   private getScriptsPath(): string {
@@ -48,20 +66,16 @@ export class FridaScriptManager {
     if (!this.isDev) {
       // In production, load embedded scripts from resources
       try {
-        const manifestPath = path.join(this.scriptsPath, 'manifest.json');
-        if (await fs.pathExists(manifestPath)) {
-          const manifest = await fs.readJson(manifestPath);
-          for (const scriptInfo of manifest.scripts) {
-            const scriptPath = path.join(this.scriptsPath, scriptInfo.file);
-            if (await fs.pathExists(scriptPath)) {
-              const source = await fs.readFile(scriptPath, 'utf8');
-              this.embeddedScripts.set(scriptInfo.name, {
-                name: scriptInfo.name,
-                source,
-                metadata: scriptInfo.metadata
-              });
-            }
-          }
+        const files = await fs.readdir(this.scriptsPath);
+        const jsFiles = files.filter(file => file.endsWith('.js'));
+        for (const file of jsFiles) {
+          const scriptPath = path.join(this.scriptsPath, file);
+          const source = await fs.readFile(scriptPath, 'utf8');
+          const scriptName = file.replace(/\.js$/, '');
+          this.embeddedScripts.set(scriptName, {
+            name: scriptName,
+            source,
+          });
         }
       } catch (error) {
         console.error('Failed to load embedded scripts:', error);
@@ -163,23 +177,24 @@ export class FridaScriptManager {
       let session: frida.Session;
       
       try {
+        const attachOption = {realm: options?.emulated ? "emulated" : "native" as any};
         if (typeof targetProcess === 'string') {
           // Spawn or attach by name
           if (options?.spawn) {
             console.log(`Spawning process: ${targetProcess}`);
-            const pid = await frida.spawn(targetProcess);
-            session = await frida.attach(pid, {realm: options.emulated ? "emulated" : "native" as any});
+            const pid = await frida.spawn([targetProcess]);
+            session = await frida.attach(pid, attachOption);
             if (options.resume) {
               await frida.resume(pid);
             }
           } else {
             console.log(`Attaching to process by name: ${targetProcess}`);
-            session = await frida.attach(targetProcess);
+            session = await frida.attach(targetProcess, attachOption);
           }
         } else {
           // Attach by PID
           console.log(`Attaching to process by PID: ${targetProcess}`);
-          session = await frida.attach(targetProcess);
+          session = await frida.attach(targetProcess, attachOption);
         }
       } catch (attachError) {
         return { 
@@ -196,7 +211,7 @@ export class FridaScriptManager {
         
         // Set up message handler
         script.message.connect((message: any, data: Buffer | null) => {
-          this.handleScriptMessage(scriptName, message, data || undefined);
+          this.eventEmiiter.emit(`script-recv-${scriptName}`, message, data ? Array.from(data) : undefined);
         });
 
         // Set up error handlers
@@ -227,6 +242,13 @@ export class FridaScriptManager {
         session,
         metadata: scriptInfo.metadata
       });
+
+      // Session detached cleanup
+      session.detached.connect(() => {
+        this.eventEmiiter.emit('frida-detached', { 
+          agent: scriptName 
+        });
+      })
 
       console.log(`✅ Script '${scriptName}' loaded successfully`);
       return { success: true };
@@ -339,17 +361,6 @@ export class FridaScriptManager {
     return null;
   }
 
-  private handleScriptMessage(scriptName: string, message: any, data?: Buffer): void {
-    console.log(`[${scriptName}]`, message);
-    
-    // Emit to renderer process if needed
-    // This will be handled by the main process that uses this manager
-    this.onMessage?.(scriptName, message, data);
-  }
-
-  // Event handler for script messages
-  public onMessage?: (scriptName: string, message: any, data?: Buffer) => void;
-
   getLoadedScripts(): Array<{ name: string; metadata?: ScriptInfo['metadata'] }> {
     return Array.from(this.loadedScripts.values()).map(script => ({
       name: script.name,
@@ -401,7 +412,7 @@ export class FridaScriptManager {
       
       // Set up message handler
       newScript.message.connect((message: any, data: Buffer | null) => {
-        this.handleScriptMessage(scriptName, message, data || undefined);
+        this.eventEmiiter.emit(`script-recv-${scriptName}`, message, data ? Array.from(data) : undefined);
       });
 
       // Unload old script and load new one
