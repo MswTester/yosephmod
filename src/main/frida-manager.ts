@@ -129,6 +129,7 @@ export class FridaScriptManager {
     options?: {
       spawn?: boolean;
       resume?: boolean;
+      emulated?: boolean;
     }
   ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -167,7 +168,7 @@ export class FridaScriptManager {
           if (options?.spawn) {
             console.log(`Spawning process: ${targetProcess}`);
             const pid = await frida.spawn(targetProcess);
-            session = await frida.attach(pid);
+            session = await frida.attach(pid, {realm: options.emulated ? "emulated" : "native" as any});
             if (options.resume) {
               await frida.resume(pid);
             }

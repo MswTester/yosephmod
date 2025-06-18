@@ -5,7 +5,7 @@ const path = require('path');
 const AGENTS_SRC_DIR = path.join(__dirname, '../src/agents');
 const AGENTS_DIST_DIR = path.join(__dirname, '../dist/agents');
 
-async function buildAgents() {
+async function buildAgents(production = false) {
   try {
     // Ensure dist directory exists
     await fs.ensureDir(AGENTS_DIST_DIR);
@@ -39,7 +39,7 @@ async function buildAgents() {
       
       try {
         // Use frida-compile to compile the agent
-        execSync(`npx frida-compile "${srcPath}" -o "${distPath}"`, {
+        execSync(`npx frida-compile ${srcPath} -o ${distPath}`, {
           stdio: 'inherit',
           cwd: path.join(__dirname, '..')
         });
