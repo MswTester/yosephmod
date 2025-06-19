@@ -3,6 +3,7 @@ import path from 'path';
 import { FridaManager } from './frida-manager';
 import { ChangeEvent, StateManager } from './state-manager';
 import { cwd } from 'process';
+import init_config from './config_initial';
 // import frida from 'frida';
 
 // Development mode detection
@@ -33,7 +34,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
-      webSecurity: false,
+      webSecurity: true,
+      devTools: isDev,
       preload: path.join(__dirname, 'preload.js')
     },
     show: false,
@@ -78,7 +80,7 @@ app.whenReady().then(async () => {
   fridaManager = new FridaManager();
 
   // Set up state change broadcasting
-  stateManager.on('state-changed', (changeEvent: ChangeEvent, store: boolean) => {
+  stateManager.on('state-changed', (changeEvent: ChangeEvent, isStore: boolean) => {
     // Update state in all windows
     const allWindows = BrowserWindow.getAllWindows();
     allWindows.forEach(window => {
@@ -91,14 +93,14 @@ app.whenReady().then(async () => {
     fridaManager.to('state-changed', changeEvent.key, changeEvent.value);
 
     // Store state
-    if (store) {
+    if (isStore) {
       (store as any).set(changeEvent.key, changeEvent.value);
     }
   });
 
   // Receive state from all agents
-  fridaManager.on('recv-state-changed', (changeEvent: ChangeEvent, store: boolean) => {
-    stateManager.setState(changeEvent.key, changeEvent.value, store);
+  fridaManager.on('recv-state-changed', (changeEvent: ChangeEvent, isStore: boolean) => {
+    stateManager.setState(changeEvent.key, changeEvent.value, isStore);
   });
 
   fridaManager.on('recv-state-get-all', () => {
@@ -111,14 +113,15 @@ app.whenReady().then(async () => {
     fridaManager.to(channel, ...args);
   })
 
-  // Setup stored state
-  const exceptions: string[] = [
-    'mainBounds'
-  ];
-  for (const i in store.store) {
-    if (exceptions.includes(i)) continue;
-    stateManager.setState(i, store.get(i));
-  }
+  // Setup initial state
+  init_config.forEach(config => {
+    if(config.store){
+      const val = store.get(config.key) || config.default;
+      stateManager.setState(config.key, val, true);
+    } else {
+      stateManager.setState(config.key, config.default);
+    }
+  })
 
   createWindow();
 

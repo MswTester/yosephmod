@@ -5,6 +5,8 @@ const App: React.FC = () => {
 
   const { state } = useGlobal();
 
+  console.log(Array.from(state.keys()));
+
   return (
     <main>
       <pre>{JSON.stringify(state, null, 2)}</pre>

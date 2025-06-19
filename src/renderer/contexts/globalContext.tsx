@@ -37,7 +37,9 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     window.electronAPI.receive('state-changed', changeHandle);
-    window.electronAPI.invoke('state-get-all')
+    window.electronAPI.invoke('state-get-all').then((state: Map<string, any>) => {
+      setState(state);
+    });
 
     return () => {
       window.electronAPI.off('state-changed', changeHandle);
