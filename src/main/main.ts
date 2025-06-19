@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { FridaManager } from './frida-manager';
 import { ChangeEvent, StateManager } from './state-manager';
-import ElectronStore from 'electron-store';
+import { cwd } from 'process';
 // import frida from 'frida';
 
 // Development mode detection
@@ -16,7 +16,7 @@ let fridaManager: FridaManager;
 let stateManager: StateManager;
 
 // Configuration
-const store = new ElectronStore();
+let store: any;
 
 /**
  * Create the main browser window
@@ -29,6 +29,7 @@ function createWindow() {
     y: storedBounds ? storedBounds.y : undefined,
     width: storedBounds ? storedBounds.width : 1200,
     height: storedBounds ? storedBounds.height : 800,
+    icon: path.join(cwd(), 'build/icon.ico'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
@@ -62,12 +63,22 @@ function createWindow() {
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
+  // Initialize electron-store using dynamic import
+  try {
+    const electronStoreModule = await eval('import("electron-store")');
+    const ElectronStore = electronStoreModule.default;
+    store = new ElectronStore();
+  } catch (error) {
+    console.error('Failed to import electron-store:', error);
+    return;
+  }
+
   // Initialize managers
   stateManager = new StateManager();
   fridaManager = new FridaManager();
 
   // Set up state change broadcasting
-  stateManager.on('state-changed', (changeEvent: ChangeEvent) => {
+  stateManager.on('state-changed', (changeEvent: ChangeEvent, store: boolean) => {
     // Update state in all windows
     const allWindows = BrowserWindow.getAllWindows();
     allWindows.forEach(window => {
@@ -78,11 +89,16 @@ app.whenReady().then(async () => {
 
     // Update state in all agents
     fridaManager.to('state-changed', changeEvent.key, changeEvent.value);
+
+    // Store state
+    if (store) {
+      (store as any).set(changeEvent.key, changeEvent.value);
+    }
   });
 
   // Receive state from all agents
-  fridaManager.on('recv-state-changed', (changeEvent: ChangeEvent) => {
-    stateManager.setState(changeEvent.key, changeEvent.value);
+  fridaManager.on('recv-state-changed', (changeEvent: ChangeEvent, store: boolean) => {
+    stateManager.setState(changeEvent.key, changeEvent.value, store);
   });
 
   fridaManager.on('recv-state-get-all', () => {
@@ -163,8 +179,8 @@ ipcMain.handle('state-get', (_event, key: string) => {
   return stateManager.getState(key);
 })
 
-ipcMain.handle('state-set', (_event, key: string, value: any) => {
-  stateManager.setState(key, value);
+ipcMain.handle('state-set', (_event, key: string, value: any, store: boolean) => {
+  stateManager.setState(key, value, store);
 })
 
 ipcMain.handle('state-get-all', () => {

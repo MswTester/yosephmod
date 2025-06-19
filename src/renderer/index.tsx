@@ -6,7 +6,6 @@ import './index.css';
 
 // Get the root element where the app will be mounted
 const container = document.getElementById('root');
-console.log("cound")
 
 if (container) {
   const root = createRoot(container);

@@ -1,10 +1,14 @@
 import React from 'react';
-import './App.css';
+import { useGlobal } from './contexts/globalContext';
 
 const App: React.FC = () => {
 
+  const { globalState } = useGlobal();
+
   return (
-    <main></main>
+    <main>
+      <pre>{JSON.stringify(globalState, null, 2)}</pre>
+    </main>
   );
 };
 

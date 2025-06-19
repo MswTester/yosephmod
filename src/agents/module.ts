@@ -6,6 +6,9 @@ export function on(channel: string, callback: (...args: any[]) => void){
 export function emit(channel: string, ...args: any[]){
     send([channel, ...args])
 }
+export function log(...args: any[]){
+    send(['log', ...args])
+}
 
 function api(message: any[]){
     const channel = message[0];

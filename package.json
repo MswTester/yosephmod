@@ -14,7 +14,7 @@
     "build:agents": "node scripts/build-agents.js",
     "build:main": "tsc -p tsconfig.main.json",
     "build:renderer": "esbuild src/renderer/index.tsx --outfile=dist/renderer/renderer.js --minify --bundle --loader:.tsx=tsx --loader:.ts=ts",
-    "watch": "concurrently \"npm run watch:main\" \"npm run watch:renderer\"",
+    "watch": "concurrently \"npm run watch:main\" \"npm run watch:renderer\" \"npm run watch:agents\"",
     "watch:main": "tsc -p tsconfig.main.json --watch",
     "watch:renderer": "esbuild src/renderer/index.tsx --outfile=dist/renderer/renderer.js --minify --bundle --loader:.tsx=tsx --loader:.ts=ts --watch",
     "watch:agents": "node scripts/build-agents.js --watch",

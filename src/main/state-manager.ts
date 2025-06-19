@@ -21,8 +21,8 @@ export class StateManager extends EventEmitter {
     return this.state.get(key);
   }
 
-  setState(key: string, value: any): void {
+  setState(key: string, value: any, store: boolean = false): void {
     this.state.set(key, value);
-    this.emit('state-changed', {key, value} as ChangeEvent);
+    this.emit('state-changed', {key, value} as ChangeEvent, store);
   }
 }

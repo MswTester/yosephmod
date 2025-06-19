@@ -10,8 +10,22 @@
   --primary-color: #2c3e50;
   --secondary-color: #3498db;
   --background-color: #f5f7fa;
-  --text-color: #2c3e50;
-  --border-color: #e1e4e8;
+  --foreground-color: #16151a;
+  --text-color: #1d1c22;
+  --text-muted-color: #656769;
+  --border-color: #d2d4d8;
+  --border-focus-color: #96999c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #16151a;
+    --foreground-color: #f5f7fa;
+    --text-color: #1d1c22;
+    --text-muted-color: #96999c;
+    --border-color: #d2d4d8;
+    --border-focus-color: #96999c;
+  }
 }
 
 /* Body styles */
