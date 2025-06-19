@@ -3,11 +3,11 @@ import { contextBridge, ipcRenderer } from 'electron';
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
-  send: (channel: string, data: any) => {
+  send: (channel: string, ...args: any[]) => {
     // Whitelist channels
     const validChannels = ['toMain'];
     if (validChannels.includes(channel)) {
-      ipcRenderer.send(channel, data);
+      ipcRenderer.send(channel, ...args);
     }
   },
   receive: (channel: string, func: (...args: any[]) => void) => {
@@ -17,25 +17,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on(channel, (_event, ...args) => func(...args));
     }
   },
+  off: (channel: string, func: (...args: any[]) => void) => {
+    const validChannels = ['fromMain'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.off(channel, func);
+    }
+  },
   invoke: (channel: string, ...args: any[]) => {
     const validChannels = [
       'ping',
-      'load-agent',
-      'unload-agent',
-      'call-agent-function',
+      'state-get',
+      'state-set',
+      'state-get-all',
     ];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     }
     return Promise.reject(new Error(`Invalid channel: ${channel}`));
-  },
-  
-  // Frida-specific events
-  onFridaMessage: (channel:string, callback: (data: any) => void) => {
-    ipcRenderer.on(`frida-${channel}`, (_event, data) => callback(data));
-  },
-
-  sendFridaMessage: (channel:string, data: any) => {
-    ipcRenderer.send(`frida-${channel}`, data);
   },
 });

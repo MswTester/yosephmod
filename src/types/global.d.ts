@@ -2,8 +2,9 @@
 declare namespace NodeJS {
   interface Global {
     electronAPI: {
-      send: (channel: string, data: any) => void;
+      send: (channel: string, ...args: any[]) => void;
       receive: (channel: string, func: (...args: any[]) => void) => void;
+      off: (channel: string, func: (...args: any[]) => void) => void;
       invoke: (channel: string, ...args: any[]) => Promise<any>;
     };
   }
@@ -11,16 +12,18 @@ declare namespace NodeJS {
 
 // Make the electronAPI available in the renderer process
 declare const electronAPI: {
-  send: (channel: string, data: any) => void;
+  send: (channel: string, ...args: any[]) => void;
   receive: (channel: string, func: (...args: any[]) => void) => void;
+  off: (channel: string, func: (...args: any[]) => void) => void;
   invoke: (channel: string, ...args: any[]) => Promise<any>;
 };
 
 // Add type definitions for the window object
 declare interface Window {
   electronAPI: {
-    send: (channel: string, data: any) => void;
+    send: (channel: string, ...args: any[]) => void;
     receive: (channel: string, func: (...args: any[]) => void) => void;
+    off: (channel: string, func: (...args: any[]) => void) => void;
     invoke: (channel: string, ...args: any[]) => Promise<any>;
   };
 }

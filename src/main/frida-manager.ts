@@ -3,52 +3,20 @@ import * as fs from 'fs-extra';
 import frida from 'frida';
 import { app } from 'electron';
 import EventEmitter from 'events';
+import { ChangeEvent, StateManager } from './state-manager';
 
-interface ScriptInfo {
-  name: string;
-  source: string;
-  metadata?: {
-    version?: string;
-    description?: string;
-    author?: string;
-    compiled?: boolean;
-  };
-}
 
-interface LoadedScript {
-  name: string;
-  script: frida.Script;
-  session: frida.Session;
-  metadata?: ScriptInfo['metadata'];
-}
-
-export class FridaScriptManager {
-  private loadedScripts = new Map<string, LoadedScript>();
+export class FridaManager extends EventEmitter {
+  private loadedScripts = new Map<string, frida.Script>();
   private isDev: boolean;
   private scriptsPath: string;
-  private embeddedScripts = new Map<string, ScriptInfo>();
-  private eventEmiiter = new EventEmitter();
+  private availableScripts = new Map<string, string>();
 
   constructor() {
+    super();
     this.isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     this.scriptsPath = this.getScriptsPath();
-    this.initializeEmbeddedScripts();
-  }
-
-  public on(scriptName: string, callback: (message: string, data?: Buffer) => void) {
-    this.eventEmiiter.on(`script-recv-${scriptName}`, (message: any, data?: Buffer) => {
-      callback(message, data);
-    });
-  }
-
-  public once(scriptName: string, callback: (message: string, data?: Buffer) => void) {
-    this.eventEmiiter.once(`script-recv-${scriptName}`, (message: any, data?: Buffer) => {
-      callback(message, data);
-    });
-  }
-
-  public off(scriptName: string, callback: (message: string, data?: Buffer) => void) {
-    this.eventEmiiter.off(`script-recv-${scriptName}`, callback);
+    this.initializeScripts();
   }
 
   private getScriptsPath(): string {
@@ -62,20 +30,31 @@ export class FridaScriptManager {
     }
   }
 
-  private async initializeEmbeddedScripts(): Promise<void> {
-    if (!this.isDev) {
-      // In production, load embedded scripts from resources
+  private async initializeScripts(): Promise<void> {
+    if (this.isDev) {
+      // In development, load scripts from file system
       try {
         const files = await fs.readdir(this.scriptsPath);
-        const jsFiles = files.filter(file => file.endsWith('.js'));
+        const jsFiles = files.filter(file => file.endsWith('.js') && !file.includes('module.js'));
         for (const file of jsFiles) {
           const scriptPath = path.join(this.scriptsPath, file);
           const source = await fs.readFile(scriptPath, 'utf8');
           const scriptName = file.replace(/\.js$/, '');
-          this.embeddedScripts.set(scriptName, {
-            name: scriptName,
-            source,
-          });
+          this.availableScripts.set(scriptName, source);
+        }
+      } catch (error) {
+        console.error('Failed to load scripts from filesystem:', error);
+      }
+    } else {
+      // In production, load embedded scripts from resources
+      try {
+        const files = await fs.readdir(this.scriptsPath);
+        const jsFiles = files.filter(file => file.endsWith('.js') && !file.includes('module.js'));
+        for (const file of jsFiles) {
+          const scriptPath = path.join(this.scriptsPath, file);
+          const source = await fs.readFile(scriptPath, 'utf8');
+          const scriptName = file.replace(/\.js$/, '');
+          this.availableScripts.set(scriptName, source);
         }
       } catch (error) {
         console.error('Failed to load embedded scripts:', error);
@@ -83,32 +62,19 @@ export class FridaScriptManager {
     }
   }
 
-  async getAvailableScripts(): Promise<ScriptInfo[]> {
-    const scripts: ScriptInfo[] = [];
+  async getAvailableScripts(): Promise<string[]> {
+    const scripts: string[] = [];
 
     if (this.isDev) {
       // Development mode: Read from file system
       try {
         if (await fs.pathExists(this.scriptsPath)) {
           const files = await fs.readdir(this.scriptsPath);
-          const jsFiles = files.filter(file => file.endsWith('.js'));
+          const jsFiles = files.filter(file => file.endsWith('.js') && !file.includes('module.js'));
 
           for (const file of jsFiles) {
-            const scriptPath = path.join(this.scriptsPath, file);
-            const source = await fs.readFile(scriptPath, 'utf8');
             const name = path.basename(file, '.js');
-            
-            // Try to extract metadata from comments
-            const metadata = this.extractMetadata(source);
-            
-            scripts.push({
-              name,
-              source,
-              metadata: {
-                ...metadata,
-                compiled: true
-              }
-            });
+            scripts.push(name);
           }
         }
       } catch (error) {
@@ -116,35 +82,17 @@ export class FridaScriptManager {
       }
     } else {
       // Production mode: Use embedded scripts
-      scripts.push(...Array.from(this.embeddedScripts.values()));
+      scripts.push(...Array.from(this.availableScripts.keys()));
     }
 
     return scripts;
   }
 
-  private extractMetadata(source: string): ScriptInfo['metadata'] {
-    const metadata: ScriptInfo['metadata'] = {};
-    
-    // Extract metadata from JSDoc-style comments
-    const versionMatch = source.match(/@version\s+(.+)/);
-    const descriptionMatch = source.match(/@description\s+(.+)/);
-    const authorMatch = source.match(/@author\s+(.+)/);
-    
-    if (versionMatch) metadata.version = versionMatch[1].trim();
-    if (descriptionMatch) metadata.description = descriptionMatch[1].trim();
-    if (authorMatch) metadata.author = authorMatch[1].trim();
-    
-    return metadata;
-  }
-
   async loadScript(
     scriptName: string, 
     targetProcess: string | number,
-    options?: {
-      spawn?: boolean;
-      resume?: boolean;
-      emulated?: boolean;
-    }
+    action: "spawn" | "attach",
+    emulated?: boolean,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // Validate script name
@@ -162,14 +110,8 @@ export class FridaScriptManager {
         await this.unloadScript(scriptName);
       }
 
-      // Get script source
-      const scriptInfo = await this.getScriptInfo(scriptName);
-      if (!scriptInfo) {
-        return { success: false, error: `Script '${scriptName}' not found` };
-      }
-
       // Validate script source
-      if (!scriptInfo.source || scriptInfo.source.trim().length === 0) {
+      if (!this.availableScripts.has(scriptName)) {
         return { success: false, error: `Script '${scriptName}' is empty or invalid` };
       }
 
@@ -177,16 +119,13 @@ export class FridaScriptManager {
       let session: frida.Session;
       
       try {
-        const attachOption = {realm: options?.emulated ? "emulated" : "native" as any};
+        const attachOption = {realm: emulated ? "emulated" : "native" as any};
         if (typeof targetProcess === 'string') {
           // Spawn or attach by name
-          if (options?.spawn) {
+          if (action === "spawn") {
             console.log(`Spawning process: ${targetProcess}`);
             const pid = await frida.spawn([targetProcess]);
             session = await frida.attach(pid, attachOption);
-            if (options.resume) {
-              await frida.resume(pid);
-            }
           } else {
             console.log(`Attaching to process by name: ${targetProcess}`);
             session = await frida.attach(targetProcess, attachOption);
@@ -207,17 +146,24 @@ export class FridaScriptManager {
       let script: frida.Script;
       
       try {
-        script = await session.createScript(scriptInfo.source);
+        script = await session.createScript(this.availableScripts.get(scriptName)!);
         
         // Set up message handler
         script.message.connect((message: any, data: Buffer | null) => {
-          this.eventEmiiter.emit(`script-recv-${scriptName}`, message, data ? Array.from(data) : undefined);
+          const channel = message[0];
+          const args = message.slice(1, message.length);
+          this.emit(`recv-${channel}`, ...args, data);
         });
 
         // Set up error handlers
         script.destroyed.connect(() => {
           console.log(`Script '${scriptName}' was destroyed`);
           this.loadedScripts.delete(scriptName);
+        });
+
+        // Set state sync
+        this.on('state-changed', (changeEvent: ChangeEvent) => {
+          script.post(['state-changed', changeEvent]);
         });
 
         await script.load();
@@ -236,21 +182,17 @@ export class FridaScriptManager {
       }
 
       // Store loaded script
-      this.loadedScripts.set(scriptName, {
-        name: scriptName,
-        script,
-        session,
-        metadata: scriptInfo.metadata
-      });
+      this.loadedScripts.set(scriptName, script);
 
       // Session detached cleanup
       session.detached.connect(() => {
-        this.eventEmiiter.emit('frida-detached', { 
+        this.emit('session-detached', { 
           agent: scriptName 
         });
+        this.unloadAllScripts();
       })
 
-      console.log(`✅ Script '${scriptName}' loaded successfully`);
+      console.log(`[*] Script '${scriptName}' loaded successfully`);
       return { success: true };
 
     } catch (error) {
@@ -270,14 +212,12 @@ export class FridaScriptManager {
       }
 
       // Unload script and detach session
-      await loadedScript.script.unload();
-      await loadedScript.session.detach();
+      await loadedScript.unload();
       
       this.loadedScripts.delete(scriptName);
-      
-      console.log(`✅ Script '${scriptName}' unloaded successfully`);
-      return { success: true };
 
+      console.log(`[*] Script '${scriptName}' unloaded successfully`);
+      return { success: true };
     } catch (error) {
       console.error(`Failed to unload script '${scriptName}':`, error);
       return { 
@@ -287,149 +227,15 @@ export class FridaScriptManager {
     }
   }
 
-  async reloadScript(
-    scriptName: string, 
-    targetProcess?: string | number,
-    options?: { spawn?: boolean; resume?: boolean }
-  ): Promise<{ success: boolean; error?: string }> {
+  async unloadAllScripts(): Promise<{ success: boolean; error?: string }> {
     try {
-      const loadedScript = this.loadedScripts.get(scriptName);
-      let target = targetProcess;
-      let loadOptions = options;
-
-      // If script is already loaded and no new target specified, use existing target
-      if (loadedScript && !target) {
-        // Try to get PID from existing session
-        try {
-          // First unload the existing script
-          await this.unloadScript(scriptName);
-          
-          // We need to re-specify the target for reload
-          return { 
-            success: false, 
-            error: 'Target process must be specified for reload' 
-          };
-        } catch (error) {
-          console.error('Error during script reload preparation:', error);
-        }
-      }
-
-      if (!target) {
-        return { 
-          success: false, 
-          error: 'Target process must be specified' 
-        };
-      }
-
-      // Reload the script
-      return await this.loadScript(scriptName, target, loadOptions);
-
-    } catch (error) {
-      console.error(`Failed to reload script '${scriptName}':`, error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
-      };
-    }
-  }
-
-  private async getScriptInfo(scriptName: string): Promise<ScriptInfo | null> {
-    if (this.isDev) {
-      // Development mode: Read from file system
-      try {
-        const scriptPath = path.join(this.scriptsPath, `${scriptName}.js`);
-        if (await fs.pathExists(scriptPath)) {
-          const source = await fs.readFile(scriptPath, 'utf8');
-          const metadata = this.extractMetadata(source);
-          return {
-            name: scriptName,
-            source,
-            metadata: {
-              ...metadata,
-              compiled: true
-            }
-          };
-        }
-      } catch (error) {
-        console.error(`Failed to read script '${scriptName}':`, error);
-      }
-    } else {
-      // Production mode: Use embedded scripts
-      return this.embeddedScripts.get(scriptName) || null;
-    }
-
-    return null;
-  }
-
-  getLoadedScripts(): Array<{ name: string; metadata?: ScriptInfo['metadata'] }> {
-    return Array.from(this.loadedScripts.values()).map(script => ({
-      name: script.name,
-      metadata: script.metadata
-    }));
-  }
-
-  isScriptLoaded(scriptName: string): boolean {
-    return this.loadedScripts.has(scriptName);
-  }
-
-  getLoadedScript(scriptName: string): LoadedScript | undefined {
-    return this.loadedScripts.get(scriptName);
-  }
-
-  async unloadAllScripts(): Promise<void> {
-    const scriptNames = Array.from(this.loadedScripts.keys());
-    for (const scriptName of scriptNames) {
-      try {
+      for (const scriptName of this.loadedScripts.keys()) {
         await this.unloadScript(scriptName);
-      } catch (error) {
-        console.error(`Failed to unload script '${scriptName}':`, error);
       }
-    }
-  }
-
-  // Hot reload support for development
-  async refreshScript(scriptName: string): Promise<{ success: boolean; error?: string }> {
-    if (!this.isDev) {
-      return { success: false, error: 'Hot reload only available in development mode' };
-    }
-
-    const loadedScript = this.loadedScripts.get(scriptName);
-    if (!loadedScript) {
-      return { success: false, error: `Script '${scriptName}' is not loaded` };
-    }
-
-    try {
-      // Read updated script from filesystem
-      const scriptPath = path.join(this.scriptsPath, `${scriptName}.js`);
-      if (!await fs.pathExists(scriptPath)) {
-        return { success: false, error: `Script file '${scriptName}.js' not found` };
-      }
-
-      const newSource = await fs.readFile(scriptPath, 'utf8');
-      
-      // Create new script with updated source
-      const newScript = await loadedScript.session.createScript(newSource);
-      
-      // Set up message handler
-      newScript.message.connect((message: any, data: Buffer | null) => {
-        this.eventEmiiter.emit(`script-recv-${scriptName}`, message, data ? Array.from(data) : undefined);
-      });
-
-      // Unload old script and load new one
-      await loadedScript.script.unload();
-      await newScript.load();
-
-      // Update stored script
-      this.loadedScripts.set(scriptName, {
-        ...loadedScript,
-        script: newScript
-      });
-
-      console.log(`🔄 Script '${scriptName}' hot reloaded successfully`);
+      console.log(`[*] All scripts unloaded successfully`);
       return { success: true };
-
     } catch (error) {
-      console.error(`Failed to hot reload script '${scriptName}':`, error);
+      console.error(`Failed to unload all scripts:`, error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : String(error) 

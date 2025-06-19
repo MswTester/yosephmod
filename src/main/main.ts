@@ -1,6 +1,8 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
-import { FridaScriptManager } from './frida-manager';
+import { FridaManager } from './frida-manager';
+import { ChangeEvent, StateManager } from './state-manager';
+import ElectronStore from 'electron-store';
 // import frida from 'frida';
 
 // Development mode detection
@@ -10,7 +12,11 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 let mainWindow: BrowserWindow | null = null;
 
 // Managers
-let scriptManager: FridaScriptManager;
+let fridaManager: FridaManager;
+let stateManager: StateManager;
+
+// Configuration
+const store = new ElectronStore();
 
 /**
  * Create the main browser window
@@ -48,15 +54,31 @@ function createWindow() {
 // This method will be called when Electron has finished initialization
 app.whenReady().then(async () => {
   // Initialize managers
-  scriptManager = new FridaScriptManager();
-  
-  // Set up message handler
-  scriptManager.on('frida-message', (scriptName: string, message: any, data?: Buffer) => {
-    mainWindow?.webContents.send('frida-message', { 
-      agent: scriptName, 
-      message,
-      data: data ? Array.from(data) : undefined
+  stateManager = new StateManager();
+  fridaManager = new FridaManager();
+
+  // Set up state change broadcasting
+  stateManager.on('state-changed', (changeEvent: ChangeEvent) => {
+    // Update state in all windows
+    const allWindows = BrowserWindow.getAllWindows();
+    allWindows.forEach(window => {
+      if (!window.isDestroyed()) {
+        window.webContents.send('state-changed', changeEvent);
+      }
     });
+
+    // Update state in all agents
+    fridaManager.emit('state-changed', changeEvent);
+  });
+
+  // Receive state from all agents
+  fridaManager.on('recv-state-changed', (changeEvent: ChangeEvent) => {
+    stateManager.setState(changeEvent.key, changeEvent.value);
+  });
+
+  fridaManager.on('recv-state-get-all', () => {
+    let state = stateManager.getAllStates();
+    fridaManager.emit('state-get-all', state);
   });
 
   createWindow();
@@ -69,52 +91,11 @@ app.whenReady().then(async () => {
   });
 });
 
-// Call RPC function in agent
-async function callAgentFunction(agentName: string, functionName: string, args: any[] = []) {
-  if (!scriptManager || !scriptManager.isScriptLoaded(agentName)) {
-    console.error(`Agent ${agentName} is not loaded`);
-    return { success: false, error: 'Agent not loaded' };
-  }
-  
-  try {
-    const loadedScript = scriptManager.getLoadedScript(agentName);
-    if (!loadedScript) {
-      return { success: false, error: 'Agent not found' };
-    }
-    
-    // Call RPC function
-    const result = await loadedScript.script.exports[functionName](...args);
-    console.log(`Called ${agentName}.${functionName}() -> ${JSON.stringify(result)}`);
-    
-    // Send result to renderer
-    mainWindow?.webContents.send('agent-rpc-result', {
-      agent: agentName,
-      function: functionName,
-      args,
-      result
-    });
-    
-    return { success: true, result };
-  } catch (error) {
-    const errorMsg = (error as Error).message;
-    console.error(`Failed to call ${agentName}.${functionName}():`, errorMsg);
-    
-    mainWindow?.webContents.send('agent-rpc-error', {
-      agent: agentName,
-      function: functionName,
-      args,
-      error: errorMsg
-    });
-    
-    return { success: false, error: errorMsg };
-  }
-}
-
 // Quit when all windows are closed, except on macOS
 app.on('window-all-closed', async () => {
   // Clean up loaded scripts before quitting
-  if (scriptManager) {
-    await scriptManager.unloadAllScripts();
+  if (fridaManager) {
+    fridaManager.unloadAllScripts();
   }
   
   if (process.platform !== 'darwin') {
@@ -138,18 +119,15 @@ if (isDev) {
     const agentName = path.basename(filePath, '.js');
     console.log(`📝 Agent file changed: ${agentName}`);
     
-    if (scriptManager && scriptManager.isScriptLoaded(agentName)) {
-      try {
-        const result = await scriptManager.refreshScript(agentName);
-        if (result.success) {
-          mainWindow?.webContents.send('agent-reloaded', agentName);
-        } else {
-          mainWindow?.webContents.send('agent-error', { agent: agentName, error: result.error });
-        }
-      } catch (error) {
-        console.error(`Failed to reload agent ${agentName}:`, error);
-        mainWindow?.webContents.send('agent-error', { agent: agentName, error: (error as Error).message });
+    try {
+      const result = await fridaManager.loadScript(agentName, 'test', 'attach');
+      if (result.success) {
+        console.log(`[*] Agent ${agentName} loaded successfully`);
+      } else {
+        console.error(`[*] Failed to load agent ${agentName}:`, result.error);
       }
+    } catch (error) {
+      console.error(`[*] Failed to reload agent ${agentName}:`, error);
     }
   });
   
@@ -167,26 +145,14 @@ if (isDev) {
 // IPC handlers
 ipcMain.handle('ping', () => 'pong');
 
-ipcMain.handle('load-agent', async (_event, agentName: string, targetProcess?: string | number, options?: any) => {
-  if (!scriptManager) {
-    return { success: false, error: 'Script manager not initialized' };
-  }
-  
-  if (!targetProcess) {
-    return { success: false, error: 'Target process must be specified' };
-  }
-  
-  return await scriptManager.loadScript(agentName, targetProcess, options);
-});
+ipcMain.handle('state-get', (_event, key: string) => {
+  return stateManager.getState(key);
+})
 
-ipcMain.handle('unload-agent', async (_event, agentName: string) => {
-  if (!scriptManager) {
-    return { success: false, error: 'Script manager not initialized' };
-  }
-  
-  return await scriptManager.unloadScript(agentName);
-});
+ipcMain.handle('state-set', (_event, key: string, value: any) => {
+  stateManager.setState(key, value);
+})
 
-ipcMain.handle('call-agent-function', async (_event, agentName: string, functionName: string, ...args: any[]) => {
-  return await callAgentFunction(agentName, functionName, args);
-});
+ipcMain.handle('state-get-all', () => {
+  return stateManager.getAllStates();
+})
