@@ -1,3 +1,3 @@
-import { state } from './module';
+import { state, log } from './module';
 
-console.log("Script Loaded", state.get("something"))
+log("Script Loaded", state.get("something"));

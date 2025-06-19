@@ -3,11 +3,12 @@ import { ChangeEvent } from '../../main/state-manager';
 
 export interface GlobalContextType {
   // State
-  globalState: Map<string, any>;
+  state: Map<string, any>;
   getState: (key: string) => any;
   setState: (key: string, value: any) => void;
   // Frida
   exec: (command: string) => void;
+  emit: (channel: string, ...args: any[]) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType | null>(null);
@@ -25,10 +26,10 @@ declare global {
 }
 
 export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [globalState, setGlobalState] = useState<Map<string, any>>(new Map());
+  const [state, setState] = useState<Map<string, any>>(new Map());
 
   const changeHandle = (changeEvent: ChangeEvent) => {
-    setGlobalState(map => {
+    setState(map => {
       map.set(changeEvent.key, changeEvent.value);
       return map;
     });
@@ -44,19 +45,23 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [])
 
   const getState = useCallback((key: string) => {
-    return globalState.get(key);
-  }, [globalState]);
+    return state.get(key);
+  }, [state]);
 
-  const setState = useCallback((key: string, value: any) => {
+  const updateState = useCallback((key: string, value: any) => {
     window.electronAPI.send('state-set', key, value);
   }, []);
 
   const exec = useCallback((command: string) => {
-    window.electronAPI.send('exec', command);
+    window.electronAPI.send('to', 'exec', command);
+  }, []);
+
+  const emit = useCallback((channel: string, ...args: any[]) => {
+    window.electronAPI.send('to', channel, ...args);
   }, []);
 
   return (
-    <GlobalContext.Provider value={{ globalState, getState, setState, exec }}>
+    <GlobalContext.Provider value={{ state, getState, setState: updateState, exec, emit }}>
       {children}
     </GlobalContext.Provider>
   );

@@ -29,7 +29,7 @@ function createWindow() {
     y: storedBounds ? storedBounds.y : undefined,
     width: storedBounds ? storedBounds.width : 1200,
     height: storedBounds ? storedBounds.height : 800,
-    icon: path.join(cwd(), 'build/icon.ico'),
+    icon: path.join(cwd(), 'build/icon.png'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
@@ -111,6 +111,15 @@ app.whenReady().then(async () => {
     fridaManager.to(channel, ...args);
   })
 
+  // Setup stored state
+  const exceptions: string[] = [
+    'mainBounds'
+  ];
+  for (const i in store.store) {
+    if (exceptions.includes(i)) continue;
+    stateManager.setState(i, store.get(i));
+  }
+
   createWindow();
 
   // On macOS it's common to re-create a window when the dock icon is clicked
@@ -147,7 +156,7 @@ if (isDev) {
   
   agentWatcher.on('change', async (filePath: string) => {
     const agentName = path.basename(filePath, '.js');
-    console.log(`📝 Agent file changed: ${agentName}`);
+    console.log(`[*] Agent file changed: ${agentName}`);
     
     try {
       const result = await fridaManager.loadScript(agentName, 'test', 'attach');
@@ -164,7 +173,7 @@ if (isDev) {
   // Enable hot reload for Electron
   try {
     require('electron-reload')(__dirname, {
-      electron: path.join(__dirname, '../../node_modules/.bin/electron'),
+      electron: path.join(cwd(), 'node_modules/.bin/electron'),
       hardResetMethod: 'exit'
     });
   } catch (error) {

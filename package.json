@@ -7,6 +7,7 @@
     "packages/*",
     "templates/*"
   ],
+  "main": "dist/main/main.js",
   "scripts": {
     "start": "electron ./dist/main/main.js",
     "dev": "cross-env NODE_ENV=development concurrently \"npm run watch\" \"npm run watch:agents\" \"npm run start\"",
@@ -80,7 +81,13 @@
         "nsis",
         "portable"
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "icon": "build/icon.png"
     },
     "nsis": {
       "oneClick": false,
@@ -93,9 +100,7 @@
     "publish": {
       "provider": "github",
       "owner": "MswTester",
-      "repo": "yongsan-sexmaster",
-      "token": "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",
-      "private": true
+      "repo": "yongsan-sexmaster"
     },
     "extraMetadata": {
       "main": "dist/main/main.js"
