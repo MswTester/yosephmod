@@ -3,8 +3,6 @@ import * as fs from 'fs-extra';
 import frida from 'frida';
 import { app } from 'electron';
 import EventEmitter from 'events';
-import { ChangeEvent, StateManager } from './state-manager';
-
 
 export class FridaManager extends EventEmitter {
   private loadedScripts = new Map<string, frida.Script>();
@@ -17,6 +15,10 @@ export class FridaManager extends EventEmitter {
     this.isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
     this.scriptsPath = this.getScriptsPath();
     this.initializeScripts();
+  }
+
+  public to(channel:string, ...args: any[]){
+    this.emit('to', channel, ...args);
   }
 
   private getScriptsPath(): string {
@@ -161,10 +163,10 @@ export class FridaManager extends EventEmitter {
           this.loadedScripts.delete(scriptName);
         });
 
-        // Set state sync
-        this.on('state-changed', (changeEvent: ChangeEvent) => {
-          script.post(['state-changed', changeEvent]);
-        });
+        // renderer -> agent
+        this.on('to', (channel: string, ...args: any[]) => {
+          script.post([channel, ...args])
+        })
 
         await script.load();
       } catch (scriptError) {

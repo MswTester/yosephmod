@@ -24,15 +24,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   invoke: (channel: string, ...args: any[]) => {
-    const validChannels = [
-      'ping',
-      'state-get',
-      'state-set',
-      'state-get-all',
-    ];
-    if (validChannels.includes(channel)) {
-      return ipcRenderer.invoke(channel, ...args);
-    }
-    return Promise.reject(new Error(`Invalid channel: ${channel}`));
+    return ipcRenderer.invoke(channel, ...args);
   },
 });

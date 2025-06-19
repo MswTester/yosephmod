@@ -6,6 +6,8 @@ export interface GlobalContextType {
   globalState: Map<string, any>;
   getState: (key: string) => any;
   setState: (key: string, value: any) => void;
+  // Frida
+  exec: (command: string) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType | null>(null);
@@ -49,8 +51,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     window.electronAPI.send('state-set', key, value);
   }, []);
 
+  const exec = useCallback((command: string) => {
+    window.electronAPI.send('exec', command);
+  }, []);
+
   return (
-    <GlobalContext.Provider value={{ globalState, getState, setState }}>
+    <GlobalContext.Provider value={{ globalState, getState, setState, exec }}>
       {children}
     </GlobalContext.Provider>
   );

@@ -1,5 +1,11 @@
-const state = new Map<string, any>();
+export const state = new Map<string, any>();
 const listeners = new Map<string, (...args: any[]) => void>()
+export function on(channel: string, callback: (...args: any[]) => void){
+    listeners.set(channel, callback)
+}
+export function emit(channel: string, ...args: any[]){
+    send([channel, ...args])
+}
 
 function api(message: any[]){
     const channel = message[0];
@@ -16,13 +22,15 @@ function api(message: any[]){
 }
 recv(api);
 
-listeners.set('state-changed', (key: string, value: any) => {
+on('state-changed', (key: string, value: any) => {
     state.set(key, value);
 });
 
-listeners.set('state-get-all', (newState: Map<string, any>) => {
+on('state-get-all', (newState: Map<string, any>) => {
     state.clear();
     newState.forEach((value, key) => {
         state.set(key, value);
     });
 });
+
+emit('state-get-all')

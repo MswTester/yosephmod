@@ -1,7 +1,7 @@
 {
-  "name": "yasm-framework",
+  "name": "yssm",
   "version": "1.0.0",
-  "description": "YASM - Frida-based cheat framework for easy development",
+  "description": "YSSM - Frida-based cheat template for easy development",
   "private": true,
   "workspaces": [
     "packages/*",
@@ -23,8 +23,8 @@
     "dist": "npm run build && electron-builder",
     "dist:win": "npm run build && electron-builder --win",
     "lint": "eslint . --ext .ts,.tsx",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "wget": "node scripts/frida-node-version.js"
+    "wget": "node scripts/frida-node-version.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",

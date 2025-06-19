@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
-import * as path from 'path';
+import path from 'path';
 import { FridaManager } from './frida-manager';
 import { ChangeEvent, StateManager } from './state-manager';
 import ElectronStore from 'electron-store';
@@ -22,10 +22,13 @@ const store = new ElectronStore();
  * Create the main browser window
  */
 function createWindow() {
+  const storedBounds: Electron.Rectangle | null = (store as any).get('mainBounds') as unknown as Electron.Rectangle
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    x: storedBounds ? storedBounds.x : undefined,
+    y: storedBounds ? storedBounds.y : undefined,
+    width: storedBounds ? storedBounds.width : 1200,
+    height: storedBounds ? storedBounds.height : 800,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
@@ -44,6 +47,12 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
   });
+
+  // Restore window bounds before window closed
+  mainWindow.on('close', () => {
+    const currentBounds = mainWindow?.getBounds();
+    (store as any).set('mainBounds', currentBounds);
+  })
 
   // Emitted when the window is closed
   mainWindow.on('closed', () => {
@@ -68,7 +77,7 @@ app.whenReady().then(async () => {
     });
 
     // Update state in all agents
-    fridaManager.emit('state-changed', changeEvent);
+    fridaManager.to('state-changed', changeEvent.key, changeEvent.value);
   });
 
   // Receive state from all agents
@@ -78,8 +87,13 @@ app.whenReady().then(async () => {
 
   fridaManager.on('recv-state-get-all', () => {
     let state = stateManager.getAllStates();
-    fridaManager.emit('state-get-all', state);
+    fridaManager.to('state-get-all', state);
   });
+
+  // renderer -> agent
+  ipcMain.on('to', (_event, channel: string, ...args: any[]) => {
+    fridaManager.to(channel, ...args);
+  })
 
   createWindow();
 
@@ -142,7 +156,7 @@ if (isDev) {
   }
 }
 
-// IPC handlers
+// IPC handlers (renderer -> process)
 ipcMain.handle('ping', () => 'pong');
 
 ipcMain.handle('state-get', (_event, key: string) => {

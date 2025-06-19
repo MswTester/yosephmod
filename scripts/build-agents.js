@@ -20,7 +20,7 @@ async function buildAgents(production = false) {
     }
     
     const agentFiles = await fs.readdir(AGENTS_SRC_DIR);
-    const tsFiles = agentFiles.filter(file => file.endsWith('.ts'));
+    const tsFiles = agentFiles.filter(file => file.endsWith('.ts') && !file.includes('module.ts'));
     
     if (tsFiles.length === 0) {
       console.log('No TypeScript agent files found');
