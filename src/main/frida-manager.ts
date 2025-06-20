@@ -6,7 +6,6 @@ import EventEmitter from 'events';
 // Types
 type ScriptName = string;
 type ProcessIdentifier = string | number;
-type ScriptAction = 'spawn' | 'attach';
 
 interface FridaScript {
   unload: () => Promise<void>;
@@ -19,7 +18,11 @@ interface FridaScript {
   };
 }
 
+type FridaDeviceType = "local" | "remote" | "usb";
+
 interface FridaDevice {
+  id: string;
+  type: FridaDeviceType;
   spawn: (args: string[]) => Promise<number>;
   attach: (pid: number, options: any) => Promise<any>;
   resume: (pid: number) => Promise<void>;
@@ -35,8 +38,8 @@ export class FridaManager extends EventEmitter {
   private frida: any;
   private loadedScripts: Map<ScriptName, FridaScript> = new Map();
   private availableScripts: Map<ScriptName, string> = new Map();
-  private device: FridaDevice | null = null;
-  public devices: any[] = [];
+  public device: FridaDevice | null = null;
+  public devices: FridaDevice[] = [];
   private isDev: boolean;
   private scriptsPath: string;
 
@@ -71,6 +74,14 @@ export class FridaManager extends EventEmitter {
     this.emit('to', channel, ...args);
   }
 
+  public async selectDeviceById(id: string): Promise<void> {
+    this.device = await new this.frida.DeviceManager().findDeviceById(id, 5000)
+  }
+
+  public async selectDeviceByType(type: FridaDeviceType): Promise<void> {
+    this.device = await new this.frida.DeviceManager().findDeviceByType(type, 5000)
+  }
+
   /**
    * Initialize available Frida devices
    * @private
@@ -82,6 +93,12 @@ export class FridaManager extends EventEmitter {
       if (this.devices.length > 0) {
         this.device = this.devices[0]; // Use first available device by default
       }
+      deviceManager.added.connect((device: FridaDevice) => {
+        this.devices.push(device);
+      })
+      deviceManager.removed.connect((device: FridaDevice) => {
+        this.devices.splice(this.devices.findIndex(d => d.id === device.id), 1);
+      })
     } catch (error) {
       throw new Error(`Failed to initialize devices: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -151,7 +168,6 @@ export class FridaManager extends EventEmitter {
   public async loadScript(
     scriptName: string, 
     targetProcess: ProcessIdentifier,
-    action: ScriptAction = 'attach',
     emulated: boolean = false,
   ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -187,16 +203,9 @@ export class FridaManager extends EventEmitter {
       try {
         if (typeof targetProcess === 'string') {
           // Spawn or attach by name
-          if (action === "spawn") {
-            console.log(`Spawning process: ${targetProcess}`);
-            pid = await this.device.spawn([targetProcess]);
-            session = !emulated && await this.device.attach(pid, attachOption);
-          } else {
-            console.log(`Attaching to process by name: ${targetProcess}`);
-            const process = await this.device.getProcess(targetProcess);
-            pid = process.pid
-            session = !emulated && await this.device.attach(pid, attachOption);
-          }
+          console.log(`Spawning process: ${targetProcess}`);
+          pid = await this.device.spawn([targetProcess]);
+          session = !emulated && await this.device.attach(pid, attachOption);
         } else {
           // Attach by PID
           console.log(`Attaching to process by PID: ${targetProcess}`);
@@ -222,9 +231,10 @@ export class FridaManager extends EventEmitter {
         
         // Set up message handler
         script.message.connect((message: any, data: Buffer | null) => {
-          const channel = message[0];
-          const args = message.slice(1, message.length);
-          this.emit(`recv-${channel}`, ...args, data);
+          let payload = [...message.payload]
+          const channel = payload.shift();
+          const args = payload;
+          this.emit(`recv-${channel}`, ...args);
         });
 
         // renderer -> agent
@@ -235,9 +245,9 @@ export class FridaManager extends EventEmitter {
 
         // Set up error handlers
         script.destroyed.connect(() => {
-          console.log(`Script '${scriptName}' was destroyed`);
           this.off('to', scriptHandler)
           this.loadedScripts.delete(scriptName);
+          console.log(`[*] Script '${scriptName}' was destroyed`);
         });
 
         await script.load();
@@ -294,10 +304,10 @@ export class FridaManager extends EventEmitter {
         return { success: false, error: `Script '${scriptName}' is not loaded` };
       }
 
+      this.loadedScripts.delete(scriptName);
+      
       // Unload script and detach session
       await script.unload();
-      
-      this.loadedScripts.delete(scriptName);
 
       console.log(`[*] Script '${scriptName}' unloaded successfully`);
       return { success: true };

@@ -1,3 +1,5 @@
-import { state, log } from './module';
+import { state, log, on } from './module';
 
-log("Script Loaded", state.get("something"));
+on('init', () => {
+    log("Script Loaded", state);
+})

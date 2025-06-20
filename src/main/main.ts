@@ -5,7 +5,7 @@ import { ChangeEvent, StateManager } from './state-manager';
 import { cwd } from 'process';
 import init_config from './config_initial';
 import os from 'os';
-// import frida from 'frida';
+import init from './main_logic';
 
 // Development mode detection
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -24,7 +24,7 @@ let store: any;
  * Create the main browser window
  */
 function createWindow() {
-  const storedBounds: Electron.Rectangle | null = (store as any).get('mainBounds') as unknown as Electron.Rectangle
+  const storedBounds: Electron.Rectangle | null = (store as any).get('main-bounds') as unknown as Electron.Rectangle
   // Create the browser window
   mainWindow = new BrowserWindow({
     x: storedBounds ? storedBounds.x : undefined,
@@ -55,7 +55,7 @@ function createWindow() {
   // Restore window bounds before window closed
   mainWindow.on('close', () => {
     const currentBounds = mainWindow?.getBounds();
-    (store as any).set('mainBounds', currentBounds);
+    (store as any).set('main-bounds', currentBounds);
   })
 
   // Emitted when the window is closed
@@ -108,15 +108,21 @@ app.whenReady().then(async () => {
   });
 
   // Receive state from all agents
-  fridaManager.on('recv-state-changed', (changeEvent: ChangeEvent) => {
-    let isStore = init_config.find(config => config.key === changeEvent.key)?.store;
-    stateManager.setState(changeEvent.key, changeEvent.value, isStore);
+  fridaManager.on('recv-state-set', (key: string, value: any) => {
+    let isStore = init_config.find(config => config.key === key)?.store;
+    stateManager.setState(key, value, isStore);
+  });
+
+  fridaManager.on('recv-log', (...args: any[]) => {
+    console.log("[AGENT]", ...args);
   });
 
   fridaManager.on('recv-state-get-all', () => {
     let state = stateManager.getAllStates();
-    fridaManager.send('state-get-all', state);
+    fridaManager.send('state-get-all', Object.fromEntries(state));
   });
+
+  fridaManager.on('recv-init', () => fridaManager.send('init'));
 
   // renderer -> agent
   ipcMain.on('to', (_event, channel: string, ...args: any[]) => {
@@ -132,6 +138,8 @@ app.whenReady().then(async () => {
       stateManager.setState(config.key, config.default);
     }
   })
+  
+  init(fridaManager, stateManager);
 
   createWindow();
 
@@ -172,7 +180,7 @@ if (isDev) {
     console.log(`[*] Agent file changed: ${agentName}`);
     
     try {
-      const result = await fridaManager.loadScript(agentName, 'test', 'attach');
+      const result = await fridaManager.loadScript(agentName, 'test');
       if (result.success) {
         console.log(`[*] Agent ${agentName} loaded successfully`);
       } else {

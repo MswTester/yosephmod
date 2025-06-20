@@ -6,9 +6,10 @@ export interface GlobalContextType {
   state: Map<string, any>;
   getState: (key: string) => any;
   setState: (key: string, value: any) => void;
+  emit: (channel: string, ...args: any[]) => void;
   // Frida
   exec: (command: string) => void;
-  emit: (channel: string, ...args: any[]) => void;
+  send: (channel: string, ...args: any[]) => void;
 }
 
 const GlobalContext = createContext<GlobalContextType | null>(null);
@@ -55,16 +56,20 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     window.electronAPI.send('state-set', key, value);
   }, []);
 
+  const emit = useCallback((channel: string, ...args: any[]) => {
+    window.electronAPI.send(channel, ...args);
+  }, []);
+
   const exec = useCallback((command: string) => {
     window.electronAPI.send('to', 'exec', command);
   }, []);
 
-  const emit = useCallback((channel: string, ...args: any[]) => {
+  const send = useCallback((channel: string, ...args: any[]) => {
     window.electronAPI.send('to', channel, ...args);
   }, []);
 
   return (
-    <GlobalContext.Provider value={{ state, getState, setState: updateState, exec, emit }}>
+    <GlobalContext.Provider value={{ state, getState, setState: updateState, emit, exec, send }}>
       {children}
     </GlobalContext.Provider>
   );

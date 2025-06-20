@@ -8,12 +8,6 @@
     "templates/*"
   ],
   "main": "dist/main/main.js",
-  "exports":{
-    ".":{
-      "import": "./dist/main/main.js",
-      "require": "./dist/main/main.cjs"
-    }
-  },
   "scripts": {
     "start": "electron ./dist/main/main.js",
     "dev": "cross-env NODE_ENV=development concurrently \"npm run watch\" \"npm run watch:agents\" \"npm run start\"",

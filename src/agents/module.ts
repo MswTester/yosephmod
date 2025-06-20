@@ -1,10 +1,9 @@
-// Demangler
 /*
- * Only for Linux/Android
+ * Frida Demangler Only for Linux/Android
  */
 export namespace Demangler {
     type StringOrStringArray = string | string[];
-    const _demangle = new NativeFunction(Module.getExportByName(null, "__cxa_demangle"), "pointer", ["pointer", "pointer", "pointer", "pointer"]);
+    const _demangle = new NativeFunction(Module.getGlobalExportByName("__cxa_demangle"), "pointer", ["pointer", "pointer", "pointer", "pointer"]);
 
     /** Demangle single symbol */
     export function demangle(mangled: string, intSize?: number): string;
@@ -37,7 +36,7 @@ export namespace Demangler {
 }
 
 // Default Module
-export const state = new Map<string, any>();
+export let state:Record<string, any> = {};
 const listeners = new Map<string, (...args: any[]) => void>()
 export function on(channel: string, callback: (...args: any[]) => void){
     listeners.set(channel, callback)
@@ -47,6 +46,9 @@ export function emit(channel: string, ...args: any[]){
 }
 export function log(...args: any[]){
     send(['log', ...args])
+}
+export function setState(key: string, value: any){
+    send(['state-set', key, value])
 }
 
 function api(message: any[]){
@@ -65,14 +67,14 @@ function api(message: any[]){
 recv(api);
 
 on('state-changed', (key: string, value: any) => {
-    state.set(key, value);
+    state[key] = value;
 });
 
-on('state-get-all', (newState: Map<string, any>) => {
-    state.clear();
-    newState.forEach((value, key) => {
-        state.set(key, value);
+on('state-get-all', (newState: Record<string, any>) => {
+    Object.entries(newState).forEach(([key, value]) => {
+        state[key] = value;
     });
+    emit('init')
 });
 
 emit('state-get-all')
