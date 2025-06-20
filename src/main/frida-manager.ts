@@ -16,6 +16,7 @@ interface FridaScript {
   destroyed: {
     connect: (callback: () => void) => void;
   };
+  isDestroyed: boolean;
 }
 
 type FridaDeviceType = "local" | "remote" | "usb";
@@ -76,10 +77,14 @@ export class FridaManager extends EventEmitter {
 
   public async selectDeviceById(id: string): Promise<void> {
     this.device = await new this.frida.DeviceManager().findDeviceById(id, 5000)
+    this.emit('recv-state-set', 'device', this.device?.id);
+    this.emit('device-changed');
   }
 
   public async selectDeviceByType(type: FridaDeviceType): Promise<void> {
     this.device = await new this.frida.DeviceManager().findDeviceByType(type, 5000)
+    this.emit('recv-state-set', 'device', this.device?.id);
+    this.emit('device-changed');
   }
 
   /**
@@ -92,6 +97,7 @@ export class FridaManager extends EventEmitter {
       this.devices = await deviceManager.enumerateDevices();
       if (this.devices.length > 0) {
         this.device = this.devices[0]; // Use first available device by default
+        this.emit('recv-state-set', 'device', this.device?.id);
       }
       deviceManager.added.connect((device: FridaDevice) => {
         this.devices.push(device);
@@ -205,12 +211,18 @@ export class FridaManager extends EventEmitter {
           // Spawn or attach by name
           console.log(`Spawning process: ${targetProcess}`);
           pid = await this.device.spawn([targetProcess]);
-          session = !emulated && await this.device.attach(pid, attachOption);
+          if(!emulated) {
+            session = await this.device.attach(pid, attachOption);
+            this.emit('recv-state-set', 'session', pid);
+          }
         } else {
           // Attach by PID
           console.log(`Attaching to process by PID: ${targetProcess}`);
-          pid = targetProcess
-          session = !emulated && await this.device.attach(pid, attachOption);
+          pid = targetProcess;
+          if(!emulated) {
+            session = await this.device.attach(pid, attachOption);
+            this.emit('recv-state-set', 'session', pid);
+          }
         }
       } catch (attachError) {
         return { 
@@ -221,6 +233,7 @@ export class FridaManager extends EventEmitter {
       if(emulated) {
         await this.device.resume(pid);
         session = await this.device.attach(pid, attachOption);
+        this.emit('recv-state-set', 'session', pid);
       }
 
       // Create and load script with error handling
@@ -237,6 +250,13 @@ export class FridaManager extends EventEmitter {
           this.emit(`recv-${channel}`, ...args);
         });
 
+        // clean up when device is changed
+        const cleanUpSession = () => {
+          this.unloadScript(scriptName);
+          session.detach();
+        }
+        this.once('device-changed', cleanUpSession)
+
         // renderer -> agent
         const scriptHandler = (channel: string, ...args: any[]) => {
           script.post([channel, ...args])
@@ -245,7 +265,9 @@ export class FridaManager extends EventEmitter {
 
         // Set up error handlers
         script.destroyed.connect(() => {
+          this.emit('recv-state-set', 'session', null);
           this.off('to', scriptHandler)
+          this.off('device-changed', cleanUpSession)
           this.loadedScripts.delete(scriptName);
           console.log(`[*] Script '${scriptName}' was destroyed`);
         });
@@ -274,9 +296,7 @@ export class FridaManager extends EventEmitter {
 
       // Session detached cleanup
       session.detached.connect(() => {
-        this.emit('session-detached', { 
-          agent: scriptName 
-        });
+        this.emit('recv-state-set', 'session', null);
         this.unloadAllScripts();
         this.removeAllListeners('to')
       })
@@ -307,7 +327,9 @@ export class FridaManager extends EventEmitter {
       this.loadedScripts.delete(scriptName);
       
       // Unload script and detach session
-      await script.unload();
+      if(!script.isDestroyed) {
+        await script.unload();
+      }
 
       console.log(`[*] Script '${scriptName}' unloaded successfully`);
       return { success: true };

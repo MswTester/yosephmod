@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { FridaManager } from './frida-manager';
 import { ChangeEvent, StateManager } from './state-manager';
-import { cwd } from 'process';
+import { argv, cwd } from 'process';
 import init_config from './config_initial';
 import os from 'os';
 import init from './main_logic';
@@ -29,8 +29,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     x: storedBounds ? storedBounds.x : undefined,
     y: storedBounds ? storedBounds.y : undefined,
-    width: storedBounds ? storedBounds.width : 1200,
-    height: storedBounds ? storedBounds.height : 800,
+    width: storedBounds ? storedBounds.width : 400,
+    height: storedBounds ? storedBounds.height : 600,
     icon: path.join(cwd(), 'build/icon.png'),
     webPreferences: {
       nodeIntegration: true,
@@ -75,6 +75,12 @@ app.whenReady().then(async () => {
     console.error('Failed to import electron-store:', error);
     return;
   }
+
+  argv.forEach(arg => {
+    if(arg === '--clear-store') {
+      store.clear();
+    }
+  })
 
   // Clean up unused store fields
   init_config.forEach(config => {

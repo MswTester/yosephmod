@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { GlobalProvider } from './contexts/globalContext';
+import { ThemeProvider } from './theme/ThemeProvider';
 import './index.css';
 
 // Get the root element where the app will be mounted
@@ -11,9 +12,11 @@ if (container) {
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
-      <GlobalProvider>
-        <App />
-      </GlobalProvider>
+      <ThemeProvider>
+        <GlobalProvider>
+          <App />
+        </GlobalProvider>
+      </ThemeProvider>
     </React.StrictMode>
   );
 }
