@@ -8,6 +8,12 @@
     "templates/*"
   ],
   "main": "dist/main/main.js",
+  "exports":{
+    ".":{
+      "import": "./dist/main/main.js",
+      "require": "./dist/main/main.cjs"
+    }
+  },
   "scripts": {
     "start": "electron ./dist/main/main.js",
     "dev": "cross-env NODE_ENV=development concurrently \"npm run watch\" \"npm run watch:agents\" \"npm run start\"",
@@ -108,7 +114,7 @@
   },
   "dependencies": {
     "electron-store": "^10.1.0",
-    "frida": "^16.7.14",
+    "frida": "^17.2.3",
     "node-wget": "^0.4.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -116,7 +122,7 @@
   },
   "devDependencies": {
     "@types/electron": "^1.4.38",
-    "@types/frida-gum": "^18.8.2",
+    "@types/frida-gum": "^19.0.0",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.11.0",
     "@types/react": "^18.3.23",

@@ -29,9 +29,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [state, setState] = useState<Map<string, any>>(new Map());
 
   const changeHandle = (changeEvent: ChangeEvent) => {
-    setState(map => {
-      map.set(changeEvent.key, changeEvent.value);
-      return map;
+    setState(prevState => {
+      const newState = new Map(prevState);
+      newState.set(changeEvent.key, changeEvent.value);
+      return newState;
     });
   }
 

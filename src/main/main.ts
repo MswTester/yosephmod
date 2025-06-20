@@ -4,6 +4,7 @@ import { FridaManager } from './frida-manager';
 import { ChangeEvent, StateManager } from './state-manager';
 import { cwd } from 'process';
 import init_config from './config_initial';
+import os from 'os';
 // import frida from 'frida';
 
 // Development mode detection
@@ -75,9 +76,17 @@ app.whenReady().then(async () => {
     return;
   }
 
+  // Clean up unused store fields
+  init_config.forEach(config => {
+    if (!store.has(config.key) || !config.store) {
+      store.delete(config.key);
+    }
+  })
+
   // Initialize managers
   stateManager = new StateManager();
   fridaManager = new FridaManager();
+  await fridaManager.initialize();
 
   // Set up state change broadcasting
   stateManager.on('state-changed', (changeEvent: ChangeEvent, isStore: boolean) => {
@@ -90,7 +99,7 @@ app.whenReady().then(async () => {
     });
 
     // Update state in all agents
-    fridaManager.to('state-changed', changeEvent.key, changeEvent.value);
+    fridaManager.send('state-changed', changeEvent.key, changeEvent.value);
 
     // Store state
     if (isStore) {
@@ -99,18 +108,19 @@ app.whenReady().then(async () => {
   });
 
   // Receive state from all agents
-  fridaManager.on('recv-state-changed', (changeEvent: ChangeEvent, isStore: boolean) => {
+  fridaManager.on('recv-state-changed', (changeEvent: ChangeEvent) => {
+    let isStore = init_config.find(config => config.key === changeEvent.key)?.store;
     stateManager.setState(changeEvent.key, changeEvent.value, isStore);
   });
 
   fridaManager.on('recv-state-get-all', () => {
     let state = stateManager.getAllStates();
-    fridaManager.to('state-get-all', state);
+    fridaManager.send('state-get-all', state);
   });
 
   // renderer -> agent
   ipcMain.on('to', (_event, channel: string, ...args: any[]) => {
-    fridaManager.to(channel, ...args);
+    fridaManager.send(channel, ...args);
   })
 
   // Setup initial state
@@ -174,9 +184,10 @@ if (isDev) {
   });
   
   // Enable hot reload for Electron
+  const fileName = os.platform() === 'win32' ? 'electron.bat' : 'electron';
   try {
     require('electron-reload')(__dirname, {
-      electron: path.join(cwd(), 'node_modules/.bin/electron'),
+      electron: path.join(cwd(), `node_modules/.bin/${fileName}`),
       hardResetMethod: 'exit'
     });
   } catch (error) {
@@ -191,8 +202,9 @@ ipcMain.handle('state-get', (_event, key: string) => {
   return stateManager.getState(key);
 })
 
-ipcMain.handle('state-set', (_event, key: string, value: any, store: boolean) => {
-  stateManager.setState(key, value, store);
+ipcMain.on('state-set', (_event, key: string, value: any) => {
+  let isStore = init_config.find(config => config.key === key)?.store;
+  stateManager.setState(key, value, isStore);
 })
 
 ipcMain.handle('state-get-all', () => {

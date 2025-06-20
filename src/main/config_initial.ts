@@ -4,7 +4,6 @@ interface setupConfig {
     store: boolean;
 }
 const init_config: setupConfig[] = [
-    {key: "mainBounds", default: {x: 0, y: 0, width: 1200, height: 800}, store: true},
-    {key: "test", default: "0", store: false},
+    {key: "mainBounds", default: {x: 0, y: 0, width: 800, height: 600}, store: true},
 ]
 export default init_config

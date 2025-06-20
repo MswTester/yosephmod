@@ -4,15 +4,33 @@ const path = require('path');
 const tar = require('tar');
 const os = require('os');
 const { execSync } = require('child_process');
+const { cwd } = require('process');
+const { readJsonSync } = require('fs-extra');
 
-const version = '16.7.14';
+const version = readJsonSync(path.join(cwd(), 'package.json'))?.dependencies?.frida?.replace('^', '');
+if(!version) return console.log('Frida version not found in package.json');
 const osName = os.platform();
 const arch = os.arch();
 const electronVersion = '125';
-const url = `https://github.com/frida/frida/releases/download/${version}/frida-v${version}-electron-v${electronVersion}-${osName}-${arch}.tar.gz`;
-const downloadPath = path.join(__dirname, '../', `frida-v${version}-electron-v${electronVersion}-${osName}-${arch}.tar.gz`);
+const tail = compareVersion(version, '16.7.15') >= 0 ?
+    `napi-v8-${osName}-${arch}.tar.gz` :
+    `electron-v${electronVersion}-${osName}-${arch}.tar.gz`
+const url = `https://github.com/frida/frida/releases/download/${version}/frida-v${version}-${tail}`;
+const downloadPath = path.join(__dirname, '../', `frida-v${version}-${tail}`);
 const extractPath = path.join(__dirname, '../', 'build');
 const targetPath = path.join(__dirname, '../', 'node_modules', 'frida', 'build');
+
+function compareVersion(v1, v2) {
+    const v1Parts = v1.split('.').map(Number);
+    const v2Parts = v2.split('.').map(Number);
+    for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+        const v1Part = v1Parts[i] || 0;
+        const v2Part = v2Parts[i] || 0;
+        if (v1Part > v2Part) return 1;
+        if (v1Part < v2Part) return -1;
+    }
+    return 0;
+}
 
 async function downloadAndInstall() {
     try {

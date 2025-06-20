@@ -3,13 +3,13 @@ import { useGlobal } from './contexts/globalContext';
 
 const App: React.FC = () => {
 
-  const { state } = useGlobal();
-
-  console.log(Array.from(state.keys()));
+  const { state, getState } = useGlobal();
 
   return (
     <main>
-      <pre>{JSON.stringify(state, null, 2)}</pre>
+      {Array.from(state.keys()).map((key, i) => (
+        <div key={i}>{key}: {JSON.stringify(getState(key))}</div>
+      ))}
     </main>
   );
 };
