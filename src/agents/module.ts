@@ -1,3 +1,5 @@
+/* eslint-disable prefer-spread */
+/* eslint-disable prefer-const */
 /*
  * Frida Demangler Only for Linux/Android
  */
@@ -36,10 +38,14 @@ export namespace Demangler {
 }
 
 // Default Module
-export let state:Record<string, any> = {};
+export let state: Record<string, any> = {};
+const stateListeners = new Set<(key: string, value: any) => void>();
 const listeners = new Map<string, (...args: any[]) => void>()
 export function on(channel: string, callback: (...args: any[]) => void){
     listeners.set(channel, callback)
+}
+export function onStateChanged(callback: (key: string, value: any) => void){
+    stateListeners.add(callback);
 }
 export function emit(channel: string, ...args: any[]){
     send([channel, ...args])
@@ -60,6 +66,7 @@ function api(message: any[]){
         }
     } catch(e) {
         console.error(e);
+        log('[ERROR]', e);
     } finally {
         recv(api);
     }
@@ -68,6 +75,9 @@ recv(api);
 
 on('state-changed', (key: string, value: any) => {
     state[key] = value;
+    for(const callback of stateListeners){
+        callback(key, value);
+    }
 });
 
 on('state-get-all', (newState: Record<string, any>) => {
@@ -80,6 +90,11 @@ on('state-get-all', (newState: Record<string, any>) => {
 emit('state-get-all')
 
 on('exec', (command: string) => {
-    const res = eval(command);
-    log('[EXEC]', res);
+    try{
+        const res = eval(command);
+        log('[EXEC]', res);
+    } catch(e) {
+        console.error(e);
+        log('[EXEC-ERROR]', e);
+    }
 })

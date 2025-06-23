@@ -244,7 +244,7 @@ export class FridaManager extends EventEmitter {
         
         // Set up message handler
         script.message.connect((message: any, data: Buffer | null) => {
-          let payload = [...message.payload]
+          const payload = [...message.payload]
           const channel = payload.shift();
           const args = payload;
           this.emit(`recv-${channel}`, ...args);

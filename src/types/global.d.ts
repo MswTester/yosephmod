@@ -2,6 +2,7 @@
 declare namespace NodeJS {
   interface Global {
     electronAPI: {
+      isDev: boolean,
       send: (channel: string, ...args: any[]) => void;
       receive: (channel: string, func: (...args: any[]) => void) => void;
       off: (channel: string, func: (...args: any[]) => void) => void;
@@ -12,6 +13,7 @@ declare namespace NodeJS {
 
 // Make the electronAPI available in the renderer process
 declare const electronAPI: {
+  isDev: boolean,
   send: (channel: string, ...args: any[]) => void;
   receive: (channel: string, func: (...args: any[]) => void) => void;
   off: (channel: string, func: (...args: any[]) => void) => void;
@@ -21,6 +23,7 @@ declare const electronAPI: {
 // Add type definitions for the window object
 declare interface Window {
   electronAPI: {
+    isDev: boolean,
     send: (channel: string, ...args: any[]) => void;
     receive: (channel: string, func: (...args: any[]) => void) => void;
     off: (channel: string, func: (...args: any[]) => void) => void;

@@ -6,6 +6,7 @@ import { argv, cwd } from 'process';
 import init_config from './config_initial';
 import os from 'os';
 import init from './main_logic';
+import { sendRenderer } from './util';
 
 // Development mode detection
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -96,13 +97,7 @@ app.whenReady().then(async () => {
 
   // Set up state change broadcasting
   stateManager.on('state-changed', (changeEvent: ChangeEvent, isStore: boolean) => {
-    // Update state in all windows
-    const allWindows = BrowserWindow.getAllWindows();
-    allWindows.forEach(window => {
-      if (!window.isDestroyed()) {
-        window.webContents.send('state-changed', changeEvent);
-      }
-    });
+    sendRenderer('state-changed', changeEvent);
 
     // Update state in all agents
     fridaManager.send('state-changed', changeEvent.key, changeEvent.value);
@@ -115,16 +110,17 @@ app.whenReady().then(async () => {
 
   // Receive state from all agents
   fridaManager.on('recv-state-set', (key: string, value: any) => {
-    let isStore = init_config.find(config => config.key === key)?.store;
+    const isStore = init_config.find(config => config.key === key)?.store;
     stateManager.setState(key, value, isStore);
   });
 
   fridaManager.on('recv-log', (...args: any[]) => {
     console.log("[AGENT]", ...args);
+    sendRenderer('log', ...args);
   });
 
   fridaManager.on('recv-state-get-all', () => {
-    let state = stateManager.getAllStates();
+    const state = stateManager.getAllStates();
     fridaManager.send('state-get-all', Object.fromEntries(state));
   });
 
@@ -217,7 +213,7 @@ ipcMain.handle('state-get', (_event, key: string) => {
 })
 
 ipcMain.on('state-set', (_event, key: string, value: any) => {
-  let isStore = init_config.find(config => config.key === key)?.store;
+  const isStore = init_config.find(config => config.key === key)?.store;
   stateManager.setState(key, value, isStore);
 })
 

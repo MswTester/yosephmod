@@ -18,6 +18,7 @@ const GlobalContext = createContext<GlobalContextType | null>(null);
 declare global {
   interface Window {
     electronAPI: {
+      isDev: boolean;
       send: (channel: string, ...args: any[]) => void;
       receive: (channel: string, func: (...args: any[]) => void) => void;
       off: (channel: string, func: (...args: any[]) => void) => void;
@@ -61,11 +62,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const exec = useCallback((command: string) => {
-    window.electronAPI.send('to', 'exec', command);
+    window.electronAPI.send('send-to-agent', 'exec', command);
   }, []);
 
   const send = useCallback((channel: string, ...args: any[]) => {
-    window.electronAPI.send('to', channel, ...args);
+    window.electronAPI.send('send-to-agent', channel, ...args);
   }, []);
 
   return (
