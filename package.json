@@ -1,7 +1,7 @@
 {
-  "name": "yssm",
+  "name": "yosephmod",
   "version": "1.0.0",
-  "description": "YSSM - Frida-based cheat template for easy development",
+  "description": "YosephMod - Frida-based cheat template for easy development",
   "private": true,
   "workspaces": [
     "packages/*",
@@ -29,7 +29,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MswTester/yongsan-sexmaster.git"
+    "url": "git+https://github.com/MswTester/yosephmod.git"
   },
   "keywords": [
     "electron",
@@ -40,12 +40,12 @@
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/MswTester/yongsan-sexmaster/issues"
+    "url": "https://github.com/MswTester/yosephmod/issues"
   },
-  "homepage": "https://github.com/MswTester/yongsan-sexmaster#readme",
+  "homepage": "https://github.com/MswTester/yosephmod#readme",
   "build": {
-    "appId": "com.mswtester.yasm",
-    "productName": "yasm",
+    "appId": "com.mswtester.yosephmod",
+    "productName": "YosephMod",
     "files": [
       "dist/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
@@ -95,12 +95,12 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "yasm"
+      "shortcutName": "YosephMod"
     },
     "publish": {
       "provider": "github",
       "owner": "MswTester",
-      "repo": "yongsan-sexmaster"
+      "repo": "yosephmod"
     },
     "extraMetadata": {
       "main": "dist/main/main.js"
