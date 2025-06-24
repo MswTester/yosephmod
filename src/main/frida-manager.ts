@@ -128,7 +128,7 @@ export class FridaManager extends EventEmitter {
     try {
       await fs.ensureDir(this.scriptsPath);
       const files = await fs.readdir(this.scriptsPath);
-      const jsFiles = files.filter(file => file.endsWith('.js') && !file.includes('module.js'));
+      const jsFiles = files.filter(file => file.endsWith('.js') && !file.includes('module.js') && !file.includes('.example.js'));
       
       await Promise.all(jsFiles.map(async (file) => {
         try {

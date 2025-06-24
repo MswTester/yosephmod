@@ -62,11 +62,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const exec = useCallback((command: string) => {
-    window.electronAPI.send('send-to-agent', 'exec', command);
+    window.electronAPI.send('to', 'exec', command);
   }, []);
 
   const send = useCallback((channel: string, ...args: any[]) => {
-    window.electronAPI.send('send-to-agent', channel, ...args);
+    window.electronAPI.send('to', channel, ...args);
   }, []);
 
   return (

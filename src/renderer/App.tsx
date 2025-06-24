@@ -16,7 +16,7 @@ const App: React.FC = () => {
 
   return (
     <Container h="100vh" justify='space-between'>
-      <Col justify='center' items='center' h="calc(100% - 2rem)">
+      <Col justify='center' items='center' h="calc(100% - 2.3rem)" overflowY='auto'>
         {tab === "main" && <Main />}
         {tab === "config" && <Config />}
         {tab === "console" && <Console />}
