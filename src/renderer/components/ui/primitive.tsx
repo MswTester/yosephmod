@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled, { css } from "styled-components";
+import { DOMtoGK } from "../../util";
 
 // Base Container Component
 const Container = styled.div<{
@@ -191,6 +192,12 @@ const Input = styled.input<{
         opacity: 0.5;
     }
 `;
+
+// Keybind Component
+const Keybind = (props: React.InputHTMLAttributes<HTMLInputElement>) => {
+    const [keybind, setKeybind] = useState('');
+    return <Input value={keybind} onKeyDown={(e) => setKeybind(DOMtoGK(e.code))} {...props} />
+}
 
 // Label Component
 const Label = styled.label<{
@@ -673,6 +680,7 @@ export {
     Col, 
     Button, 
     Input, 
+    Keybind, 
     Label,
     Heading,
     Text,
