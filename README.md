@@ -1,4 +1,4 @@
-# YSSM - Complete Application Development Guide
+# YosephMod - Complete Application Development Guide
 
 > 🎓 **Educational Purposes Only** - A comprehensive guide for application development and reverse engineering learning
 
@@ -13,8 +13,8 @@
 
 ### 2. Project Download and Setup
 ```bash
-git clone https://github.com/MswTester/yongsan-sexmaster.git
-cd yongsan-sexmaster
+git clone https://github.com/MswTester/yosephmod.git
+cd yosephmod
 npm install
 ```
 
@@ -28,7 +28,7 @@ npm run dev
 ## 🏗️ Understanding System Architecture
 
 ### 📋 Overall Structure Overview
-YSSM operates through **3 independent parts** communicating with each other:
+YosephMod operates through **3 independent parts** communicating with each other:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -286,7 +286,7 @@ const Main = () => {
 
 ### 🧩 Primitive Component System
 
-YSSM provides reusable UI components:
+YosephMod provides reusable UI components:
 
 #### Basic Layout Components
 ```typescript
@@ -787,7 +787,7 @@ npm run dist
 #### Deployment Package Structure
 ```
 deployment_folder/
-├── YSSM-1.0.0-win.exe        # Windows executable
+├── YosephMod-1.0.0-win.exe        # Windows executable
 ├── Usage_Guide.txt           # Simple usage guide
 ├── Target_App_Settings.txt   # Target app-specific configuration guide
 └── Troubleshooting.txt       # Common problem solutions
@@ -795,7 +795,7 @@ deployment_folder/
 
 #### User Guide Example
 ```
-YSSM Application Usage Guide
+YosephMod Application Usage Guide
 
 1. Android Device Preparation
    - Enable USB debugging
@@ -803,7 +803,7 @@ YSSM Application Usage Guide
    - Connect to PC via USB
 
 2. Application Execution
-   - Run YSSM.exe
+   - Run YosephMod.exe
    - Ensure target app is running
    - Use features in Main tab
 
@@ -970,7 +970,7 @@ Solution:
 ## 📞 Getting Help
 
 ### Issue Reporting
-- GitHub Issues: [Report Issue](https://github.com/MswTester/yongsan-sexmaster/issues)
+- GitHub Issues: [Report Issue](https://github.com/MswTester/yosephmod/issues)
 
 ### Learning Resources
 - [Frida Official Documentation](https://frida.re/docs/)

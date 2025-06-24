@@ -17,7 +17,7 @@ export class StateManager extends EventEmitter {
     return this.state;
   }
 
-  getState(key: string): Map<string, any> {
+  getState(key: string): any {
     return this.state.get(key);
   }
 

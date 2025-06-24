@@ -14,7 +14,26 @@ import {
 } from './components/ui/primitive';
 
 const Main = () => {
-    const { state } = useGlobal();
+    const { state, getState, setState, emit, exec, send } = useGlobal();
+
+    // From Process
+    // window.electronAPI.receive("custom-event", (customArgs) => void);
+
+    // To Process
+    // emit("custom-event", customArgs);
+
+    // To Agent
+    // send("custom-event", customArgs);
+
+    // On State Changed
+    // useEffect(() => void, [state]);
+
+    // Change State
+    // setState('key', 'value');
+
+    // Get State
+    // getState('key');
+
     return (
         <Container h="100%" p=".5rem" gap=".5rem">
             

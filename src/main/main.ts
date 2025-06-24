@@ -7,6 +7,13 @@ import init_config from './config_initial';
 import os from 'os';
 import init from './main_logic';
 import { sendRenderer } from './util';
+import { GlobalKeyboardListener } from 'node-global-key-listener';
+
+const gkListener = new GlobalKeyboardListener();
+
+gkListener.addListener((e, down) => {
+  console.log(e,down);
+})
 
 // Development mode detection
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -62,6 +69,7 @@ function createWindow() {
   // Emitted when the window is closed
   mainWindow.on('closed', () => {
     mainWindow = null;
+    gkListener.kill()
   });
 }
 

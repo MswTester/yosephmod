@@ -1,4 +1,4 @@
-# YSSM - 완벽한 치트앱 개발 가이드
+# YosephMod - 완벽한 치트앱 개발 가이드
 
 > 🎓 **교육 목적 전용** - 누구나 따라할 수 있는 완벽한 치트앱 제작 가이드
 
@@ -13,8 +13,8 @@
 
 ### 2. 프로젝트 다운로드 및 설치
 ```bash
-git clone https://github.com/MswTester/yongsan-sexmaster.git
-cd yongsan-sexmaster
+git clone https://github.com/MswTester/yosephmod.git
+cd yosephmod
 npm install
 ```
 
@@ -28,7 +28,7 @@ npm run dev
 ## 🏗️ 시스템 아키텍처 이해하기
 
 ### 📋 전체 구조 개요
-YSSM은 **3개의 독립적인 파트**가 서로 통신하여 작동합니다:
+YosephMod은 **3개의 독립적인 파트**가 서로 통신하여 작동합니다:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -286,7 +286,7 @@ const Main = () => {
 
 ### 🧩 Primitive 컴포넌트 시스템
 
-YSSM은 재사용 가능한 UI 컴포넌트를 제공합니다:
+YosephMod은 재사용 가능한 UI 컴포넌트를 제공합니다:
 
 #### 기본 레이아웃 컴포넌트
 ```typescript
@@ -787,7 +787,7 @@ npm run dist
 #### 배포 패키지 구성
 ```
 배포_폴더/
-├── YSSM-1.0.0-win.exe        # Windows 실행 파일
+├── YosephMod-1.0.0-win.exe        # Windows 실행 파일
 ├── 사용법.txt                # 간단한 사용 가이드
 ├── 타겟앱_설정.txt            # 타겟 앱별 설정 가이드
 └── 문제해결.txt              # 자주 발생하는 문제 해결법
@@ -795,7 +795,7 @@ npm run dist
 
 #### 사용자 가이드 예제
 ```
-YSSM 치트앱 사용법
+YosephMod 치트앱 사용법
 
 1. 안드로이드 기기 준비
    - USB 디버깅 활성화
@@ -803,7 +803,7 @@ YSSM 치트앱 사용법
    - USB로 PC와 연결
 
 2. 앱 실행
-   - YSSM.exe 실행
+   - YosephMod.exe 실행
    - 타겟 앱이 실행 중인지 확인
    - Main 탭에서 치트 기능 사용
 
@@ -970,7 +970,7 @@ function traceFunction(functionAddr: NativePointer, name: string) {
 ## 📞 도움 받기
 
 ### 문제 신고
-- GitHub Issues: [이슈 등록](https://github.com/MswTester/yongsan-sexmaster/issues)
+- GitHub Issues: [이슈 등록](https://github.com/MswTester/yosephmod/issues)
 
 ### 학습 자료
 - [Frida 공식 문서](https://frida.re/docs/)
