@@ -14,6 +14,9 @@ on('init', () => {
 // On State Changed
 // onStateChanged((key, value) => void);
 
+// Key Event
+// onKey((key, down) => void);
+
 // Change State
 // setState('key', 'value');
 

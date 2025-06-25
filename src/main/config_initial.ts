@@ -1,4 +1,3 @@
-// Example Codes - 초기 설정 예제 코드
 interface setupConfig {
     key: string;
     default: any;

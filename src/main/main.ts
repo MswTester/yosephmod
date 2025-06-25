@@ -11,10 +11,6 @@ import { GlobalKeyboardListener } from 'node-global-key-listener';
 
 const gkListener = new GlobalKeyboardListener();
 
-gkListener.addListener((e, down) => {
-  console.log(e,down);
-})
-
 // Development mode detection
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -137,6 +133,12 @@ app.whenReady().then(async () => {
   // renderer -> agent
   ipcMain.on('to', (_event, channel: string, ...args: any[]) => {
     fridaManager.send(channel, ...args);
+  })
+  
+  gkListener.addListener((key, _keymap) => {
+    const [name, down] = [key.name || key._raw, key.state === "DOWN"];
+    fridaManager.send('key-event', name, down);
+    sendRenderer('key-event', name, down);
   })
 
   // Setup initial state

@@ -4,8 +4,10 @@ import { ChangeEvent } from '../../main/state-manager';
 export interface GlobalContextType {
   // State
   state: Map<string, any>;
+  keymap: Map<string, boolean>;
   getState: (key: string) => any;
   setState: (key: string, value: any) => void;
+  useOn: (channel: string, callback: (...args: any[]) => void) => void;
   emit: (channel: string, ...args: any[]) => void;
   // Frida
   exec: (command: string) => void;
@@ -29,6 +31,7 @@ declare global {
 
 export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<Map<string, any>>(new Map());
+  const [keymap, setKeymap] = useState<Map<string, boolean>>(new Map());
 
   const changeHandle = (changeEvent: ChangeEvent) => {
     setState(prevState => {
@@ -37,15 +40,24 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return newState;
     });
   }
+  
+  const keyHandle = (key: string, down: boolean) => {
+    setKeymap(prevKeymap => {
+      const newKeymap = new Map(prevKeymap);
+      newKeymap.set(key, down);
+      return newKeymap;
+    });
+  }
 
   useEffect(() => {
     window.electronAPI.receive('state-changed', changeHandle);
+    window.electronAPI.receive('key-event', keyHandle);
     window.electronAPI.invoke('state-get-all').then((state: Map<string, any>) => {
       setState(state);
     });
-
     return () => {
       window.electronAPI.off('state-changed', changeHandle);
+      window.electronAPI.off('key-event', keyHandle);
     }
   }, [])
 
@@ -69,8 +81,15 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     window.electronAPI.send('to', channel, ...args);
   }, []);
 
+  const useOn = useCallback((channel: string, callback: (...args: any[]) => void) => {
+    window.electronAPI.receive(channel, callback);
+    return () => {
+      window.electronAPI.off(channel, callback);
+    }
+  }, []);
+
   return (
-    <GlobalContext.Provider value={{ state, getState, setState: updateState, emit, exec, send }}>
+    <GlobalContext.Provider value={{ state, keymap, getState, setState: updateState, emit, exec, send, useOn }}>
       {children}
     </GlobalContext.Provider>
   );

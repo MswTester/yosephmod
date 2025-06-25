@@ -39,13 +39,18 @@ export namespace Demangler {
 
 // Default Module
 export let state: Record<string, any> = {};
+export let keymap: Record<string, boolean> = {};
 const stateListeners = new Set<(key: string, value: any) => void>();
+const keyListeners = new Set<(key: string, value: any) => void>();
 const listeners = new Map<string, (...args: any[]) => void>()
 export function on(channel: string, callback: (...args: any[]) => void){
     listeners.set(channel, callback)
 }
 export function onStateChanged(callback: (key: string, value: any) => void){
     stateListeners.add(callback);
+}
+export function onKey(callback: (key: string, down: boolean) => void){
+    keyListeners.add(callback);
 }
 export function emit(channel: string, ...args: any[]){
     send([channel, ...args])
@@ -86,6 +91,13 @@ on('state-get-all', (newState: Record<string, any>) => {
     });
     emit('init')
 });
+
+on('key-event', (key: string, down: boolean) => {
+    keymap[key] = down;
+    for(const callback of keyListeners){
+        callback(key, down);
+    }
+})
 
 emit('state-get-all')
 

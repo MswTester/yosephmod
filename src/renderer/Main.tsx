@@ -10,14 +10,16 @@ import {
     Text,
     Heading,
     Switch,
-    Slider
+    Slider,
+    Keybind
 } from './components/ui/primitive';
+import { DOMtoGK } from './util';
 
 const Main = () => {
-    const { state, getState, setState, emit, exec, send } = useGlobal();
+    const { state, getState, setState, emit, exec, send, useOn, keymap } = useGlobal();
 
     // From Process
-    // window.electronAPI.receive("custom-event", (customArgs) => void);
+    // useOn("custom-event", (customArgs) => void);
 
     // To Process
     // emit("custom-event", customArgs);
@@ -36,7 +38,7 @@ const Main = () => {
 
     return (
         <Container h="100%" p=".5rem" gap=".5rem">
-            
+
         </Container>
     );
 };

@@ -159,6 +159,7 @@ const Input = styled.input<{
     error?: boolean;
     family?: 'mono' | 'sans' | 'serif';
     mw?: string;
+    align?: 'left' | 'center' | 'right';
 }>`
     display: flex;
     height: 36px;
@@ -175,6 +176,7 @@ const Input = styled.input<{
     white-space: nowrap;
     font-family: ${props => props.family || 'sans'};
     max-width: ${props => props.mw || '100%'};
+    text-align: ${props => props.align || 'left'};
     
     &::placeholder {
         color: ${props => props.theme.colors.textMuted};
@@ -194,9 +196,11 @@ const Input = styled.input<{
 `;
 
 // Keybind Component
-const Keybind = (props: React.InputHTMLAttributes<HTMLInputElement>) => {
-    const [keybind, setKeybind] = useState('');
-    return <Input value={keybind} onKeyDown={(e) => setKeybind(DOMtoGK(e.code))} {...props} />
+const Keybind = (props: {
+    onKeyChange?: (key: string) => void;
+    mw?: string;
+} & React.InputHTMLAttributes<HTMLInputElement>) => {
+    return <Input align="center" mw={props.mw} onKeyDown={(e) => {e.preventDefault(); props.onKeyChange?.(DOMtoGK(e.code))}} {...props} />
 }
 
 // Label Component
